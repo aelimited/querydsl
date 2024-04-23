@@ -1,10 +1,12 @@
 package study.querydsl.entity;
 
 import com.querydsl.core.QueryResults;
+import com.querydsl.core.Tuple;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.PersistenceContext;
-import org.assertj.core.api.Assertions;
+import jakarta.persistence.PersistenceUnit;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.annotation.Commit;
@@ -13,7 +15,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static study.querydsl.entity.QMember.*;
+import static study.querydsl.entity.QMember.member;
+import static study.querydsl.entity.QTeam.team;
 
 
 @SpringBootTest
@@ -24,6 +27,9 @@ class MemberTest {
     EntityManager em;
 
     JPAQueryFactory queryFactory;
+
+    @PersistenceUnit
+    EntityManagerFactory emf;
 
     @Test
     public void test() {
@@ -137,4 +143,96 @@ class MemberTest {
             assertThat(queryResults.getResults().size()).isEqualTo(2);
         }
     }
+
+    @Test
+    public void aggregation() throws Exception {
+        if (queryFactory != null) {
+            List<Tuple> result = queryFactory
+                    .select(member.count(),
+                            member.age.sum(),
+                            member.age.avg(),
+                            member.age.max(),
+                            member.age.min())
+                    .from(member)
+                    .fetch();
+            Tuple tuple = result.get(0);
+            assertThat(tuple.get(member.count())).isEqualTo(4);
+            assertThat(tuple.get(member.age.sum())).isEqualTo(100);
+            assertThat(tuple.get(member.age.avg())).isEqualTo(25);
+            assertThat(tuple.get(member.age.max())).isEqualTo(40);
+            assertThat(tuple.get(member.age.min())).isEqualTo(10);
+        }
+    }
+
+    @Test
+    public void join() throws Exception {
+        QMember member = QMember.member;
+        QTeam team = QTeam.team;
+        if (queryFactory != null) {
+            List<Member> result = queryFactory
+                    .selectFrom(member)
+                    .join(member.team, team)
+                    .where(team.name.eq("teamA"))
+                    .fetch();
+
+            assertThat(result)
+                    .extracting("username")
+                    .containsExactly("member1", "member2");
+        }
+    }
+
+    @Test
+    public void join_on_filtering() throws Exception {
+        if (queryFactory != null) {
+            List<Tuple> result = queryFactory
+                    .select(member, team)
+                    .from(member)
+                    .leftJoin(member.team, team)
+                    .on(team.name.eq("teamA"))
+                    .fetch();
+
+            for (Tuple tuple : result) {
+                System.out.println("tuple = " + tuple);
+            }
+        }
+    }
+
+    @Test
+    public void join_on_no_relation(){
+        em.persist(new Member("teamA"));
+        em.persist(new Member("teamB"));
+
+        if (queryFactory != null) {
+            List<Tuple> result =queryFactory
+                    .select(member, team)
+                    .from(member)
+                    .leftJoin(team).on(member.userName.eq(team.name))
+                    .fetch();
+
+            for (Tuple tuple : result){
+                System.out.println("tuple = " + tuple);
+            }
+        }
+    }
+
+    @Test
+    public void fetchJoinUse() throws Exception {
+        em.flush();
+        em.clear();
+
+        if (queryFactory != null) {
+            Member findMember = queryFactory
+                    .selectFrom(member)
+                    .join(member.team, team).fetchJoin()
+                    .where(member.userName.eq("member1"))
+                    .fetchOne();
+
+            boolean loaded =
+                    emf.getPersistenceUnitUtil().isLoaded(findMember.getTeam());
+            assertThat(loaded).as("페치 조인 적용").isTrue();
+        }
+    }
+
+
+
 }
