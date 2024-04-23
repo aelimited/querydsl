@@ -2,6 +2,9 @@ package study.querydsl.entity;
 
 import com.querydsl.core.QueryResults;
 import com.querydsl.core.Tuple;
+import com.querydsl.core.types.ExpressionUtils;
+import com.querydsl.core.types.Projections;
+import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
@@ -11,6 +14,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.annotation.Commit;
 import org.springframework.transaction.annotation.Transactional;
+import study.querydsl.dto.MemberDto;
+import study.querydsl.dto.UserDto;
 
 import java.util.List;
 
@@ -198,18 +203,18 @@ class MemberTest {
     }
 
     @Test
-    public void join_on_no_relation(){
+    public void join_on_no_relation() {
         em.persist(new Member("teamA"));
         em.persist(new Member("teamB"));
 
         if (queryFactory != null) {
-            List<Tuple> result =queryFactory
+            List<Tuple> result = queryFactory
                     .select(member, team)
                     .from(member)
                     .leftJoin(team).on(member.userName.eq(team.name))
                     .fetch();
 
-            for (Tuple tuple : result){
+            for (Tuple tuple : result) {
                 System.out.println("tuple = " + tuple);
             }
         }
@@ -233,6 +238,59 @@ class MemberTest {
         }
     }
 
+
+    @Test
+    public void tupleProjection() {
+        if (queryFactory != null) {
+            List<Tuple> result = queryFactory
+                    .select(member.userName, member.age)
+                    .from(member)
+                    .fetch();
+
+            for (Tuple tuple : result) {
+                String username = tuple.get(member.userName);
+                Integer age = tuple.get(member.age);
+                System.out.println("username = " + username);
+                System.out.println("age = " + age);
+            }
+        }
+    }
+
+    @Test
+    public void findBySetter() {
+        if (queryFactory != null) {
+            List<MemberDto> result = queryFactory
+//                    .select(Projections.bean(MemberDto.class,
+                    .select(Projections.fields(MemberDto.class, //필드에 바로 꽃아줌
+                            member.userName,
+                            member.age))
+                    .from(member)
+                    .fetch();
+            for (MemberDto memberDto : result) {
+                System.out.println("memberDto = " + memberDto);
+            }
+        }
+    }
+    @Test
+    public void findUserDto() {
+        QMember memberSub =new QMember("memberSub");
+
+        if (queryFactory != null) {
+            List<UserDto> result = queryFactory
+                    .select(Projections.fields(UserDto.class, //필드에 바로 꽃아줌
+                            member.userName.as("name"),//as로 해서 dto에 있는 이름 값이랑 동일하게 하는거
+                            ExpressionUtils.as(
+                                    JPAExpressions
+                                            .select(memberSub.age.max())
+                                            .from(memberSub),"age")
+                            ))
+                    .from(member)
+                    .fetch();
+            for (UserDto userDto : result) {
+                System.out.println("userDto = " + userDto);
+            }
+        }
+    }
 
 
 }
