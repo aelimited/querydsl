@@ -72,11 +72,11 @@ class MemberTest {
             Member findMember = queryFactory
                     .select(member)
                     .from(member)
-                    .where(member.userName.eq("MemberA"))
+                    .where(member.username.eq("MemberA"))
                     .fetchOne();
 
             if (findMember != null) {
-                assertThat(findMember.getUserName()).isEqualTo("MemberA");
+                assertThat(findMember.getUsername()).isEqualTo("MemberA");
             } else {
                 System.out.println(" = ");
             }
@@ -91,11 +91,11 @@ class MemberTest {
 //                    .where(member.userName.eq("Member1")
 //                            .and(member.age.eq(10)))
                     //and 조건을 파라미터로 처리 하는 방법
-                    .where(member.userName.eq("member1"),
+                    .where(member.username.eq("member1"),
                             member.age.eq(10))
                     .fetchOne();
 
-            assertThat(findMember.getUserName()).isEqualTo("Member1");
+            assertThat(findMember.getUsername()).isEqualTo("Member1");
         }
     }
 
@@ -121,14 +121,14 @@ class MemberTest {
                     .selectFrom(member)
                     .where(member.age.eq(100))
                     .orderBy(member.age.desc(),
-                            member.userName.asc().nullsLast())
+                            member.username.asc().nullsLast())
                     .fetch();
             Member member5 = result.get(0);
             Member member6 = result.get(1);
             Member memberNull = result.get(2);
-            assertThat(member5.getUserName()).isEqualTo("member5");
-            assertThat(member6.getUserName()).isEqualTo("member6");
-            assertThat(memberNull.getUserName()).isNull();
+            assertThat(member5.getUsername()).isEqualTo("member5");
+            assertThat(member6.getUsername()).isEqualTo("member6");
+            assertThat(memberNull.getUsername()).isNull();
         }
     }
 
@@ -137,7 +137,7 @@ class MemberTest {
         if (queryFactory != null) {
             QueryResults<Member> queryResults = queryFactory
                     .selectFrom(member)
-                    .orderBy(member.userName.desc())
+                    .orderBy(member.username.desc())
                     .offset(1)
                     .limit(2)
                     .fetchResults();
@@ -211,7 +211,7 @@ class MemberTest {
             List<Tuple> result = queryFactory
                     .select(member, team)
                     .from(member)
-                    .leftJoin(team).on(member.userName.eq(team.name))
+                    .leftJoin(team).on(member.username.eq(team.name))
                     .fetch();
 
             for (Tuple tuple : result) {
@@ -229,7 +229,7 @@ class MemberTest {
             Member findMember = queryFactory
                     .selectFrom(member)
                     .join(member.team, team).fetchJoin()
-                    .where(member.userName.eq("member1"))
+                    .where(member.username.eq("member1"))
                     .fetchOne();
 
             boolean loaded =
@@ -243,12 +243,12 @@ class MemberTest {
     public void tupleProjection() {
         if (queryFactory != null) {
             List<Tuple> result = queryFactory
-                    .select(member.userName, member.age)
+                    .select(member.username, member.age)
                     .from(member)
                     .fetch();
 
             for (Tuple tuple : result) {
-                String username = tuple.get(member.userName);
+                String username = tuple.get(member.username);
                 Integer age = tuple.get(member.age);
                 System.out.println("username = " + username);
                 System.out.println("age = " + age);
@@ -262,7 +262,7 @@ class MemberTest {
             List<MemberDto> result = queryFactory
 //                    .select(Projections.bean(MemberDto.class,
                     .select(Projections.fields(MemberDto.class, //필드에 바로 꽃아줌
-                            member.userName,
+                            member.username,
                             member.age))
                     .from(member)
                     .fetch();
@@ -278,7 +278,7 @@ class MemberTest {
         if (queryFactory != null) {
             List<UserDto> result = queryFactory
                     .select(Projections.fields(UserDto.class, //필드에 바로 꽃아줌
-                            member.userName.as("name"),//as로 해서 dto에 있는 이름 값이랑 동일하게 하는거
+                            member.username.as("name"),//as로 해서 dto에 있는 이름 값이랑 동일하게 하는거
                             ExpressionUtils.as(
                                     JPAExpressions
                                             .select(memberSub.age.max())
